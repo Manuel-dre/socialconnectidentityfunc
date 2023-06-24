@@ -1,0 +1,90 @@
+const Web3 = require('web3');
+const ContractKit = require('@celo/contractkit');
+const SocialConnect = require('socialconnect');
+const crypto = require('crypto');
+const tls = require('tls');
+
+const web3 = new Web3('https://forno.celo.org'); // we're using the Celo forno endpoint
+
+// Generating a secure encryption key and storing it securely using a key management solution
+const myLoanEncryptionKey = crypto.randomBytes(32);
+
+// Simulating a secure key exchange between the platform and users (government, institutions, stakeholders and eligible candidates)
+const platformLoanPublicKey = crypto.createDiffieHellman(256).generateKeys();
+const platformLoanPrivateKey = crypto.createDiffieHellman(256).generateKeys();
+// Exchanging public keys securely with the users through a secure communication channel
+
+async function main() {
+  const client = ContractKit.newKitFromWeb3(web3);
+  const accounts = await web3.eth.getAccounts();
+  const contractOwner = accounts[0];
+
+  client.addAccount('0x69cf10b25126c72b0c38c2e06d45251be8d5db4b6ebefbbf3c4e45d1c7a5e31f'); // This is only my randomly generated key
+
+  const netId = await web3.eth.net.getId();
+  const network = await client.web3.eth.net.getNetworkType();
+  console.log(`Connected to ${network} with network ID: ${netId}`);
+}
+
+async function deployContract() {
+  const contractOwner = accounts[0];
+
+  // Compile the StudentLoan contract and get its ABI and bytecode
+  const StudentLoanContract = require('./StudentLoanContract.json');
+  const contractData = new web3.eth.Contract(StudentLoanContract.abi);
+
+  // Deploy the contract
+  const deployTx = contractData.deploy({
+    data: StudentLoanContract.bytecode,
+  });
+
+  const gasPrice = await web3.eth.getGasPrice();
+  const gasEstimate = await deployTx.estimateGas({ from: contractOwner });
+
+  const deployTxn = await deployTx.send({
+    from: contractOwner,
+    gas: gasEstimate,
+    gasPrice: gasPrice,
+  });
+
+  const contractAddress = deployTxn.options.address;
+  console.log(`StudentLoan contract deployed at address: ${contractAddress}`);
+}
+
+async function interactWithContract() {
+  const contractAddress = '0xDa1B3b9E843E71D5a24722e785f9009F18e829B3'; // do note that 
+
+  // Loading the contract instance
+  const contract = new web3.eth.Contract(StudentLoanContract.abi, contractAddress);
+
+  // Call contract functions or listen for events
+  // Example: Apply for a loan with SocialConnect identity verification
+  const loanAmount = 1000;
+  const loanDuration = 12;
+  const interestRate = 5;
+  const verificationToken = 'SOCIALCONNECTVERIFICATIONTOKEN'; // you replace the "SOCIALCONNECTVERIFICATIONTOKEN" with the actual verification token from SocialConnect.
+
+  // Verify the user's identity using SocialConnect
+  const verifiedAddress = await verifyIdentity(verificationToken);
+  if (!verifiedAddress) {
+    console.log('Identity verification failed.');
+    return;
+  }
+
+  // Encrypt the loan application using hybrid encryption
+  const encryptedApplication = encryptLoanApplication(
+    { loanAmount, loanDuration, interestRate },
+    platformLoanPublicKey
+  );
+
+  const applyLoanTx = await contract.methods.applyLoan(
+    encryptedApplication.encryptedData,
+    encryptedApplication.iv,
+    encryptedApplication.encryptedSymmetricKey
+  ).send({
+    from: verifiedAddress, // using the verified address for loan application
+  });
+
+  console.log('Loan application successful.');
+
+  // Rest
